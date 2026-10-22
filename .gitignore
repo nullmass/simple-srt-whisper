@@ -1,0 +1,54 @@
+venv/
+venv-*/
+.venv/
+.venv-*/
+models/
+__pycache__/
+.pytest_cache/
+
+listen_config.json
+/sravni/
+/.vscode/
+/Text Document.txt
+*.py[cod]
+*.log
+*.srt
+*.zip
+*.dll
+ffmpeg.exe
+ffprobe.exe
+
+# Local media
+*.mp3
+*.wav
+*.m4a
+*.flac
+*.aac
+*.ogg
+*.opus
+*.mp4
+*.mkv
+*.mov
+*.webm
+*.avi
+*.flv
+*.wmv
+*.m4v
+*.mpg
+*.mpeg
+*.3gp
+*.ogv
+
+# Model artifacts
+*.pt
+*.bin
+*.safetensors
+*.h5
+*.msgpack
+
+# Downloaded model conversion sources
+convert/whisper-small-full/
+
+# Temporary release staging directories
+_github_release/
+_archive_check/
