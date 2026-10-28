@@ -4,16 +4,16 @@ Listen is a local Windows application that turns audio and video speech into `.s
 
 ## How it works
 
-1. `start_cpu.bat` or `start_cuda.bat` locates an installed Python 3.10–3.14 interpreter and creates a separate virtual environment for that mode.
+1. Both launchers use one shared `.venv`, created with Python 3.10–3.14 if needed.
 2. It downloads FFmpeg Essentials into `tools/ffmpeg/bin/` if FFmpeg is not already present.
-3. It installs the shared Python packages from `req.txt` and the selected CPU or CUDA PyTorch build.
+3. It installs the shared Python packages from `req.txt`. CUDA mode additionally installs the NVIDIA runtimes from `req-cuda.txt`; PyTorch is not required.
 4. `main.py` opens the selected audio or video file, loads the requested Whisper model, transcribes speech, and writes an `.srt` file next to the input media.
 
 The default model is `small`. Models are downloaded automatically by `faster-whisper` into `models/` the first time they are used. The first run needs an internet connection and several gigabytes of free disk space for packages and the model. Later starts reuse the installed packages, FFmpeg, and cached model.
 
 ## Hardware
 
-An NVIDIA GPU is **not required**. `start_cpu.bat` installs the CPU-only PyTorch build and runs transcription on the CPU. `start_cuda.bat` installs a CUDA 12.8 PyTorch build and its NVIDIA runtime libraries. CUDA mode also needs a supported NVIDIA GPU and a compatible NVIDIA display driver. The CUDA runtime libraries stay inside its virtual environment, so a system-wide CUDA Toolkit installation is not required.
+An NVIDIA GPU is **not required**. `start_cpu.bat` explicitly runs on the CPU, including when CUDA packages are installed. `start_cuda.bat` adds CUDA 12.8 and cuDNN 9 runtime libraries to the same `.venv` and explicitly selects CUDA. CUDA mode needs a supported NVIDIA GPU and compatible display driver. A system-wide CUDA Toolkit installation is not required.
 
 ## Quick start
 
@@ -29,7 +29,9 @@ start_cpu.bat "C:\media\lecture.webm" --language ru
 start_cuda.bat "C:\media\lecture.webm" --language ru
 ```
 
-If no path is provided, the application opens a file picker. CPU and CUDA modes use separate environments, so their packages do not overwrite one another.
+If no path is provided, the application opens a file picker. Switching CPU/CUDA reuses the same environment and models. CPU mode leaves optional GPU packages installed. Run `remove_cuda.bat` to uninstall the optional NVIDIA runtimes and legacy PyTorch packages from `.venv` while keeping CPU mode available. CUDA mode reinstalls its runtimes when next selected.
+
+When upgrading an older release, the new launchers use `.venv` and leave old `.venv-cpu` / `.venv-cuda` folders unused. Those old folders can be deleted after verifying the upgrade; keep `models/` to retain downloaded models.
 
 ## Features
 
@@ -43,6 +45,7 @@ If no path is provided, the application opens a file picker. CPU and CUDA modes 
 
 ```text
 --model MODEL              faster-whisper model name or local CTranslate2 model path
+--device {auto,cpu,cuda}   explicit device for manual runs; launchers select their mode
 --language LANGUAGE        language code, such as ru, en, or ko
 --batch-size N             inference batch size (default: 16)
 --compute-type TYPE        for example float16, int8, or int8_float16
@@ -63,16 +66,18 @@ start_cpu.bat "C:\media\lecture.mp3" --model medium --language ru
 
 ## Manual setup
 
-The launchers manage their environments automatically. For manual installation, install the packages in `req.txt` and choose a CPU-only or CUDA-enabled PyTorch build in the [PyTorch install selector](https://pytorch.org/get-started/locally/).
+The launchers manage their environment automatically. For manual CPU installation, install `req.txt` in `.venv` and run `main.py --device cpu`. For CUDA, also install `req-cuda.txt`, then run `main.py --device cuda`. The application registers the NVIDIA DLL directories on Windows. No PyTorch installation is needed.
 
 ## Project files
 
 - `main.py` — application and subtitle generation pipeline.
 - `start_cpu.bat` — one-click CPU environment setup and application launcher.
 - `start_cuda.bat` — one-click CUDA environment setup and application launcher.
+- `remove_cuda.bat` — optional GPU package removal from the shared environment.
 - `setup_and_run.ps1` — shared setup, dependency installation, and launch logic.
 - `install_ffmpeg.ps1` — downloads and installs the FFmpeg executables on first run.
 - `req.txt` — shared Python application dependencies, including compatibility constraints.
+- `req-cuda.txt` — optional NVIDIA runtime dependencies.
 - `convert/` — optional scripts for converting legacy Whisper model files.
 
 Downloaded environments, models, FFmpeg binaries, local settings, media, and generated `.srt` files are excluded from Git by `.gitignore`.

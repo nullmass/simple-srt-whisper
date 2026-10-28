@@ -2,11 +2,21 @@ import argparse
 import json
 import os
 import re
+import sys
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog
 
-import torch
+# Keep DLL directory handles alive for delayed CUDA/cuDNN loads on Windows.
+_nvidia_dll_directories = []
+if os.name == "nt":
+    for _package in ("cublas", "cudnn", "cuda_runtime"):
+        _bin_dir = Path(sys.prefix) / "Lib" / "site-packages" / "nvidia" / _package / "bin"
+        if _bin_dir.is_dir():
+            os.environ["PATH"] = str(_bin_dir) + os.pathsep + os.environ.get("PATH", "")
+            _nvidia_dll_directories.append(os.add_dll_directory(str(_bin_dir)))
+
+import ctranslate2
 from faster_whisper import BatchedInferencePipeline, WhisperModel
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
@@ -160,7 +170,7 @@ def select_language_interactive():
 
 
 def detect_device():
-    return "cuda" if torch.cuda.is_available() else "cpu"
+    return "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
 
 
 def default_compute_type(device):
@@ -965,6 +975,12 @@ def main():
         default=DEFAULT_MAX_CPS,
         help="Максимум символов в секунду для субтитра (по умолчанию: 18)",
     )
+    parser.add_argument(
+        "--device",
+        choices=("auto", "cpu", "cuda"),
+        default="auto",
+        help="Execution device; the launchers explicitly select cpu or cuda",
+    )
     args = parser.parse_args()
 
     if args.batch_size < 1 or args.max_chars_per_line < 10 or args.max_lines < 1:
@@ -996,7 +1012,7 @@ def main():
     update_last_dir(script_dir, file_path)
 
     language = args.language.strip().lower() if args.language else select_language_interactive()
-    device = detect_device()
+    device = detect_device() if args.device == "auto" else args.device
     compute_type = args.compute_type or default_compute_type(device)
     vad_filter = not args.no_vad
 
